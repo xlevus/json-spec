@@ -2,6 +2,12 @@
 Command-line interface
 ======================
 
+All commands are suitable for bash scriptings :
+
+- they return real error code.
+- json documents can be feed with pipelines.
+
+
 json-extract
 ------------
 
@@ -23,6 +29,18 @@ Extract a fragment from a json document.
     echo '{"foo": ["bar", "baz"]}' | json-extract '#/foo/1'
     json-extract '#/foo/1' --document-file=doc.json
     json-extract '#/foo/1' < doc.json
+
+
+json-add
+--------
+
+Transform a json document.
+
+**Usage**
+
+::
+
+    json-add '#/foo/bar'
 
 
 json-validate

@@ -7,7 +7,7 @@ import sys
 import logging
 from functools import wraps
 from jsonspec import driver
-from .parsers import extract_parser, validate_parser
+from .parsers import add_parser, extract_parser, validate_parser
 
 try:
     from termcolor import colored
@@ -49,6 +49,163 @@ def format_output(func):
             print(response)
             sys.exit(0)
     return wrapper
+
+
+@disable_logging
+@format_output
+def add_cmd():
+    """
+    Add a fragment to a document.
+    """
+    from jsonspec.operations import add, Error
+    from jsonspec.pointer import ParseError
+
+    parser = add_parser()
+    args = parser.parse_args()
+
+    try:
+        pointer = args.pointer
+        if pointer.startswith('#/'):
+            pointer = pointer[1:]
+        document = parse_document(args, parser)
+        fragment = parse_fragment(args, parser)
+        response = add(document, pointer, fragment)
+        return driver.dumps(response, indent=args.indent)
+    except Error:
+        raise Exception('{} does not match'.format(args.pointer))
+    except ParseError:
+        raise Exception('{} is not a valid pointer'.format(args.pointer))
+
+
+@disable_logging
+@format_output
+def remove_cmd():
+    """
+    Add a fragment to a document.
+    """
+    from jsonspec.operations import remove, Error
+    from jsonspec.pointer import ParseError
+
+    parser = add_parser()
+    args = parser.parse_args()
+
+    try:
+        pointer = args.pointer
+        if pointer.startswith('#/'):
+            pointer = pointer[1:]
+        document = parse_document(args, parser)
+        response = remove(document, pointer)
+        return driver.dumps(response, indent=args.indent)
+    except Error:
+        raise Exception('{} does not match'.format(args.pointer))
+    except ParseError:
+        raise Exception('{} is not a valid pointer'.format(args.pointer))
+
+
+@disable_logging
+@format_output
+def replace_cmd():
+    """
+    Add a fragment to a document.
+    """
+    from jsonspec.operations import replace, Error
+    from jsonspec.pointer import ParseError
+
+    parser = add_parser()
+    args = parser.parse_args()
+
+    try:
+        pointer = args.pointer
+        if pointer.startswith('#/'):
+            pointer = pointer[1:]
+        document = parse_document(args, parser)
+        fragment = parse_fragment(args, parser)
+        response = replace(document, pointer, fragment)
+        return driver.dumps(response, indent=args.indent)
+    except Error:
+        raise Exception('{} does not match'.format(args.pointer))
+    except ParseError:
+        raise Exception('{} is not a valid pointer'.format(args.pointer))
+
+
+@disable_logging
+@format_output
+def move_cmd():
+    """
+    Add a fragment to a document.
+    """
+    from jsonspec.operations import move, Error
+    from jsonspec.pointer import ParseError
+
+    parser = add_parser()
+    args = parser.parse_args()
+
+    try:
+        pointer = args.pointer
+        if pointer.startswith('#/'):
+            pointer = pointer[1:]
+        document = parse_document(args, parser)
+        target = parse_target(args, parser)
+        response = move(document, target, pointer)
+        return driver.dumps(response, indent=args.indent)
+    except Error:
+        raise Exception('{} does not match'.format(args.pointer))
+    except ParseError:
+        raise Exception('{} is not a valid pointer'.format(args.pointer))
+
+
+@disable_logging
+@format_output
+def copy_cmd():
+    """
+    Add a fragment to a document.
+    """
+    from jsonspec.operations import copy, Error
+    from jsonspec.pointer import ParseError
+
+    parser = add_parser()
+    args = parser.parse_args()
+
+    try:
+        pointer = args.pointer
+        if pointer.startswith('#/'):
+            pointer = pointer[1:]
+        document = parse_document(args, parser)
+        target = parse_target(args, parser)
+        response = copy(document, target, pointer)
+        return driver.dumps(response, indent=args.indent)
+    except Error:
+        raise Exception('{} does not match'.format(args.pointer))
+    except ParseError:
+        raise Exception('{} is not a valid pointer'.format(args.pointer))
+
+
+@disable_logging
+@format_output
+def check_cmd():
+    """
+    Add a fragment to a document.
+    """
+    from jsonspec.operations import check, Error
+    from jsonspec.pointer import ParseError
+
+    parser = add_parser()
+    args = parser.parse_args()
+
+    try:
+        pointer = args.pointer
+        if pointer.startswith('#/'):
+            pointer = pointer[1:]
+        document = parse_document(args, parser)
+        fragment = parse_fragment(args, parser)
+        if check(document, pointer, fragment, True):
+            return 'It validates'
+        else:
+            raise Exception('It does not validate')
+    except Error:
+        raise Exception('It does not validate')
+    except ParseError:
+        raise Exception('{} is not a valid pointer'.format(args.pointer))
 
 
 @disable_logging
@@ -132,12 +289,35 @@ def parse_schema(args, parser):
     parser.error('schema is required')
 
 
+def parse_fragment(args, parser):
+    if args.fragment_json:
+        try:
+            return driver.loads(args.fragment_json)
+        except Exception:
+            raise Exception('could not parse fragment, is it a file maybe?')
+    elif args.fragment_file:
+        return read_file(args.fragment_file, 'fragment')
+
+    parser.error('fragment is required')
+
+
+def parse_target(args, parser):
+    if args.target:
+        target = args.target
+        if target.startswith('#/'):
+            return target[1:]
+        return target
+
+    parser.error('target is required')
+
+
 def read_file(filename, placeholder=None):
     placeholder = placeholder or 'file'
     try:
         return driver.load(open(filename, 'r'))
     except OSError as error:
         if error.errno != errno.EEXIST:
-            raise Exception('{} {} does not exists'.format(placeholder, filename))
+            raise Exception('{} {} does not exists'.format(placeholder,
+                                                           filename))
     except Exception as error:
         raise error
