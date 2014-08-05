@@ -13,6 +13,18 @@ import json
 from . import TestCase, move_cwd
 
 
+def runner(func, args, success, result):
+    try:
+        response = func(args)
+        if not success:
+            raise Exception('error expected', response)
+    except Exception as error:
+        if success:
+            raise Exception('success expected', error)
+    else:
+        assert json.loads(response) == result
+
+
 scenarii = [
     # Pointer scenarii
 
@@ -66,20 +78,8 @@ add_scenes = [
 
 @pytest.mark.parametrize('pointer, document, fragment, success, result', add_scenes)
 def test_cli_add(pointer, document, fragment, success, result):
-    with move_cwd():
-        doc, frag = json.dumps(document), json.dumps(fragment)
-        proc = Popen(['json-add', pointer, '--document-json', doc, '--fragment-json', frag],
-                     stderr=PIPE,
-                     stdout=PIPE)
-        stdout, stderr = proc.communicate()
-        ret = proc.returncode
-
-        if success and ret == 0 and json.loads(stdout.decode('utf-8')) == result:
-            return
-        if not success and ret > 0:
-            return
-
-        assert False, (ret, stdout, stderr, success, result)
+    doc, frag = json.dumps(document), json.dumps(fragment)
+    runner(cli.add_cmd.run, [pointer, '--document-json', doc, '--fragment-json', frag], success, result)
 
 
 remove_scenes = [
@@ -90,20 +90,8 @@ remove_scenes = [
 
 @pytest.mark.parametrize('pointer, document, success, result', remove_scenes)
 def test_cli_remove(pointer, document, success, result):
-    with move_cwd():
-        doc = json.dumps(document)
-        proc = Popen(['json-remove', pointer, '--document-json', doc],
-                     stderr=PIPE,
-                     stdout=PIPE)
-        stdout, stderr = proc.communicate()
-        ret = proc.returncode
-
-        if success and ret == 0 and json.loads(stdout.decode('utf-8')) == result:
-            return
-        if not success and ret > 0:
-            return
-
-        assert False, (ret, stdout, stderr, success, result)
+    doc = json.dumps(document)
+    runner(cli.remove_cmd.run, [pointer, '--document-json', doc], success, result)
 
 
 replace_scenes = [
@@ -114,20 +102,8 @@ replace_scenes = [
 
 @pytest.mark.parametrize('pointer, document, fragment, success, result', replace_scenes)
 def test_cli_replace(pointer, document, fragment, success, result):
-    with move_cwd():
-        doc, frag = json.dumps(document), json.dumps(fragment)
-        proc = Popen(['json-replace', pointer, '--document-json', doc, '--fragment-json', frag],
-                     stderr=PIPE,
-                     stdout=PIPE)
-        stdout, stderr = proc.communicate()
-        ret = proc.returncode
-
-        if success and ret == 0 and json.loads(stdout.decode('utf-8')) == result:
-            return
-        if not success and ret > 0:
-            return
-
-        assert False, (ret, stdout, stderr, success, result)
+    doc, frag = json.dumps(document), json.dumps(fragment)
+    runner(cli.replace_cmd.run, [pointer, '--document-json', doc, '--fragment-json', frag], success, result)
 
 
 move_scenes = [
@@ -138,20 +114,8 @@ move_scenes = [
 
 @pytest.mark.parametrize('pointer, document, target, success, result', move_scenes)
 def test_cli_move(pointer, document, target, success, result):
-    with move_cwd():
-        doc = json.dumps(document)
-        proc = Popen(['json-move', pointer, '--document-json', doc, '--target-pointer', target],
-                     stderr=PIPE,
-                     stdout=PIPE)
-        stdout, stderr = proc.communicate()
-        ret = proc.returncode
-
-        if success and ret == 0 and json.loads(stdout.decode('utf-8')) == result:
-            return
-        if not success and ret > 0:
-            return
-
-        assert False, (ret, stdout, stderr, success, result)
+    doc = json.dumps(document)
+    runner(cli.move_cmd.run, [pointer, '--document-json', doc, '--target-pointer', target], success, result)
 
 
 copy_scenes = [
@@ -162,17 +126,5 @@ copy_scenes = [
 
 @pytest.mark.parametrize('pointer, document, target, success, result', copy_scenes)
 def test_cli_copy(pointer, document, target, success, result):
-    with move_cwd():
-        doc = json.dumps(document)
-        proc = Popen(['json-copy', pointer, '--document-json', doc, '--target-pointer', target],
-                     stderr=PIPE,
-                     stdout=PIPE)
-        stdout, stderr = proc.communicate()
-        ret = proc.returncode
-
-        if success and ret == 0 and json.loads(stdout.decode('utf-8')) == result:
-            return
-        if not success and ret > 0:
-            return
-
-        assert False, (ret, stdout, stderr, success, result)
+    doc = json.dumps(document)
+    runner(cli.copy_cmd.run, [pointer, '--document-json', doc, '--target-pointer', target], success, result)
