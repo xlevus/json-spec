@@ -18,11 +18,9 @@ class AddCommand(Command):
 
     def get_parser(self):
         parser = parser_base(self.__doc__)
-        parser.add_argument('pointer', help='a valid json pointer')
-        parser.add_argument('--document-json', help='json structure')
-        parser.add_argument('--document-file', help='filename')
-        parser.add_argument('--fragment-json')
-        parser.add_argument('--fragment-file')
+        parser_pointer(parser)
+        parser_document(parser)
+        parser_fragment(parser)
         parser.add_argument('--indent', type=int, help='indentation')
         return parser
 
@@ -61,9 +59,8 @@ class RemoveCommand(Command):
 
     def get_parser(self):
         parser = parser_base(self.__doc__)
-        parser.add_argument('pointer', help='a valid json pointer')
-        parser.add_argument('--document-json', help='json structure')
-        parser.add_argument('--document-file', help='filename')
+        parser_pointer(parser)
+        parser_document(parser)
         parser.add_argument('--indent', type=int, help='indentation')
         return parser
 
@@ -101,11 +98,9 @@ class ReplaceCommand(Command):
 
     def get_parser(self):
         parser = parser_base(self.__doc__)
-        parser.add_argument('pointer', help='a valid json pointer')
-        parser.add_argument('--document-json', help='json structure')
-        parser.add_argument('--document-file', help='filename')
-        parser.add_argument('--fragment-json')
-        parser.add_argument('--fragment-file')
+        parser_pointer(parser)
+        parser_document(parser)
+        parser_fragment(parser)
         parser.add_argument('--indent', type=int, help='indentation')
         return parser
 
@@ -144,10 +139,9 @@ class MoveCommand(Command):
 
     def get_parser(self):
         parser = parser_base(self.__doc__)
-        parser.add_argument('pointer', help='a valid json pointer')
+        parser_pointer(parser)
         parser.add_argument('-t', '--target-pointer', help='target pointer')
-        parser.add_argument('--document-json', help='json structure')
-        parser.add_argument('--document-file', help='filename')
+        parser_document(parser)
         parser.add_argument('--indent', type=int, help='indentation')
         return parser
 
@@ -186,10 +180,9 @@ class CopyCommand(Command):
 
     def get_parser(self):
         parser = parser_base(self.__doc__)
-        parser.add_argument('pointer', help='a valid json pointer')
+        parser_pointer(parser)
         parser.add_argument('-t', '--target-pointer', help='target pointer')
-        parser.add_argument('--document-json', help='json structure')
-        parser.add_argument('--document-file', help='filename')
+        parser_document(parser)
         parser.add_argument('--indent', type=int, help='indentation')
         return parser
 
@@ -215,84 +208,134 @@ class CopyCommand(Command):
             raise Exception('{} is not a valid pointer'.format(args.pointer))
 
 
-@disable_logging
-@format_output
-def check_cmd(args=None):
-    """
-    Add a fragment to a document.
-    """
-    from jsonspec.operations import check, Error
-    from jsonspec.pointer import ParseError
+class CheckCommand(Command):
+    """Tests that a value at the target location is equal to a specified value.
 
-    parser = check_parser()
-    args = parser.parse_args(args)
+    examples::
 
-    try:
+        %(prog)s '#/foo/1' --fragment-file=fragment.json --document-json='{"foo": ["bar", "baz"]}'
+        echo '{"foo": ["bar", "baz"]}' | %(prog)s '#/foo/1' --fragment-file=fragment.json
+        %(prog)s '#/foo/1' --fragment-file=fragment.json --document-file=doc.json
+        %(prog)s '#/foo/1' --fragment-file=fragment.json < doc.json
+    """
+
+    def get_parser(self):
+        parser = parser_base(self.__doc__)
+        parser_pointer(parser)
+        parser_document(parser)
+        parser_fragment(parser)
+        parser.add_argument('--indent', type=int, help='indentation')
+        return parser
+
+    def parse(self, args=None):
+        parser = self.get_parser()
+        args = parser.parse_args(args)
         parse_pointer(args, parser)
         parse_document(args, parser)
         parse_fragment(args, parser)
-        if check(args.document, args.pointer, args.fragment, True):
-            return 'It validates'
-        else:
+        return args
+
+    def run(self, args=None):
+        from jsonspec.operations import check, Error
+        from jsonspec.pointer import ParseError
+        args = self.parse(args)
+
+        try:
+            if check(args.document, args.pointer, args.fragment):
+                return 'It validates'
+            else:
+                raise Exception('It does not validate')
+        except Error as error:
             raise Exception('It does not validate')
-    except Error:
-        raise Exception('It does not validate')
-    except ParseError:
-        raise Exception('{} is not a valid pointer'.format(args.pointer))
+        except ParseError as error:
+            raise Exception('{} is not a valid pointer'.format(args.pointer))
 
 
-@disable_logging
-@format_output
-def extract_cmd(args=None):
+class ExtractCommand(Command):
+    """Extract a fragment from a json document.
+
+    examples::
+
+        %(prog)s '#/foo/1' --document-json='{"foo": ["bar", "baz"]}'
+        echo '{"foo": ["bar", "baz"]}' | %(prog)s '#/foo/1'
+        %(prog)s '#/foo/1' --document-file=doc.json
+        %(prog)s '#/foo/1' < doc.json
     """
-    Extract fragment from document.
-    """
-    from jsonspec.pointer import extract
-    from jsonspec.pointer import ExtractError, ParseError
 
-    parser = extract_parser()
-    args = parser.parse_args(args)
+    def get_parser(self):
+        parser = parser_base(self.__doc__)
+        parser_pointer(parser)
+        parser_document(parser)
+        parser.add_argument('--indent', type=int, help='indentation')
+        return parser
 
-    try:
+    def parse(self, args=None):
+        parser = self.get_parser()
+        args = parser.parse_args(args)
         parse_pointer(args, parser)
         parse_document(args, parser)
-        response = extract(args.document, args.pointer)
-        return driver.dumps(response, indent=args.indent)
-    except ExtractError:
-        raise Exception('{} does not match'.format(args.pointer))
-    except ParseError:
-        raise Exception('{} is not a valid pointer'.format(args.pointer))
+        return args
+
+    def run(self, args=None):
+        from jsonspec.pointer import extract
+        from jsonspec.pointer import ExtractError, ParseError
+        args = self.parse(args)
+        try:
+            response = extract(args.document, args.pointer)
+            return driver.dumps(response, indent=args.indent)
+        except ExtractError:
+            raise Exception('{} does not match'.format(args.pointer))
+        except ParseError:
+            raise Exception('{} is not a valid pointer'.format(args.pointer))
 
 
-@disable_logging
-@format_output
-def validate_cmd(args=None):
+class ValidateCommand(Command):
+    """Validate document against a schema.
+
+    examples::
+
+        %(prog)s --schema-file=schema.json --document-json='{"foo": ["bar", "baz"]}'
+        echo '{"foo": ["bar", "baz"]}' | %(prog)s --schema-file=schema.json
+        %(prog)s --schema-file=schema.json --document-file=doc.json
+        %(prog)s --schema-file=schema.json < doc.json
     """
-    Validate document against a schema.
-    """
-    from jsonspec.validators import load
-    from jsonspec.validators import ValidationError
 
-    parser = validate_parser()
-    args = parser.parse_args(args)
+    def get_parser(self):
+        parser = parser_base(self.__doc__)
+        parser_document(parser)
+        parser_schema(parser)
+        parser.add_argument('--indent', type=int, help='indentation')
+        return parser
 
-    try:
+    def parse(self, args=None):
+        parser = self.get_parser()
+        args = parser.parse_args(args)
         parse_document(args, parser)
         parse_schema(args, parser)
-        validated = load(args.schema).validate(args.document)
-        return driver.dumps(validated, indent=args.indent)
-    except ValidationError as error:
-        msg = 'document does not validate with schema.\n\n'
-        for pointer, reasons in error.flatten.items():
-            msg += '  {}\n'.format(pointer)
-            for reason in reasons:
-                msg += '    - reason {}\n'.format(reason)
-            msg += '\n'
-        raise Exception(msg)
+        return args
+
+    def run(self, args=None):
+        from jsonspec.validators import load
+        from jsonspec.validators import ValidationError
+        args = self.parse(args)
+        try:
+            validated = load(args.schema).validate(args.document)
+            return driver.dumps(validated, indent=args.indent)
+        except ValidationError as error:
+            msg = 'document does not validate with schema.\n\n'
+            for pointer, reasons in error.flatten.items():
+                msg += '  {}\n'.format(pointer)
+                for reason in reasons:
+                    msg += '    - reason {}\n'.format(reason)
+                msg += '\n'
+            raise Exception(msg)
 
 
 add_cmd = AddCommand()
+check_cmd = CheckCommand()
+copy_cmd = CopyCommand()
+extract_cmd = ExtractCommand()
+move_cmd = MoveCommand()
 remove_cmd = RemoveCommand()
 replace_cmd = ReplaceCommand()
-move_cmd = MoveCommand()
-copy_cmd = CopyCommand()
+validate_cmd = ValidateCommand()
