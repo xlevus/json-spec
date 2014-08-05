@@ -1,4 +1,6 @@
-__all__ = ['extract_parser', 'validate_parser']
+__all__ = ['extract_parser', 'validate_parser', 'add_parser',
+           'replace_parser', 'remove_parser', 'move_parser',
+           'copy_parser', 'check_parser']
 
 import argparse
 from textwrap import dedent
@@ -81,6 +83,8 @@ def move_parser():
             """))
     parser.add_argument('pointer', help='a valid json pointer')
     parser.add_argument('-t', '--target-pointer', help='target pointer')
+    parser.add_argument('--document-json', help='json structure')
+    parser.add_argument('--document-file', help='filename')
     parser.add_argument('--indent', type=int, help='indentation')
     return parser
 
@@ -100,6 +104,8 @@ def copy_parser():
             """))
     parser.add_argument('pointer', help='a valid json pointer')
     parser.add_argument('-t', '--target-pointer', help='target pointer')
+    parser.add_argument('--document-json', help='json structure')
+    parser.add_argument('--document-file', help='filename')
     parser.add_argument('--indent', type=int, help='indentation')
     return parser
 

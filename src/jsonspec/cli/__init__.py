@@ -7,7 +7,7 @@ import sys
 import logging
 from functools import wraps
 from jsonspec import driver
-from .parsers import add_parser, extract_parser, validate_parser
+from .parsers import *  # noqa
 
 try:
     from termcolor import colored
@@ -65,15 +65,15 @@ def add_cmd():
 
     try:
         pointer = args.pointer
-        if pointer.startswith('#/'):
+        if pointer.startswith('#'):
             pointer = pointer[1:]
         document = parse_document(args, parser)
         fragment = parse_fragment(args, parser)
         response = add(document, pointer, fragment)
         return driver.dumps(response, indent=args.indent)
-    except Error:
-        raise Exception('{} does not match'.format(args.pointer))
-    except ParseError:
+    except Error as error:
+        raise Exception(error)
+    except ParseError as error:
         raise Exception('{} is not a valid pointer'.format(args.pointer))
 
 
@@ -86,12 +86,12 @@ def remove_cmd():
     from jsonspec.operations import remove, Error
     from jsonspec.pointer import ParseError
 
-    parser = add_parser()
+    parser = remove_parser()
     args = parser.parse_args()
 
     try:
         pointer = args.pointer
-        if pointer.startswith('#/'):
+        if pointer.startswith('#'):
             pointer = pointer[1:]
         document = parse_document(args, parser)
         response = remove(document, pointer)
@@ -111,12 +111,12 @@ def replace_cmd():
     from jsonspec.operations import replace, Error
     from jsonspec.pointer import ParseError
 
-    parser = add_parser()
+    parser = replace_parser()
     args = parser.parse_args()
 
     try:
         pointer = args.pointer
-        if pointer.startswith('#/'):
+        if pointer.startswith('#'):
             pointer = pointer[1:]
         document = parse_document(args, parser)
         fragment = parse_fragment(args, parser)
@@ -137,12 +137,12 @@ def move_cmd():
     from jsonspec.operations import move, Error
     from jsonspec.pointer import ParseError
 
-    parser = add_parser()
+    parser = move_parser()
     args = parser.parse_args()
 
     try:
         pointer = args.pointer
-        if pointer.startswith('#/'):
+        if pointer.startswith('#'):
             pointer = pointer[1:]
         document = parse_document(args, parser)
         target = parse_target(args, parser)
@@ -163,12 +163,12 @@ def copy_cmd():
     from jsonspec.operations import copy, Error
     from jsonspec.pointer import ParseError
 
-    parser = add_parser()
+    parser = copy_parser()
     args = parser.parse_args()
 
     try:
         pointer = args.pointer
-        if pointer.startswith('#/'):
+        if pointer.startswith('#'):
             pointer = pointer[1:]
         document = parse_document(args, parser)
         target = parse_target(args, parser)
@@ -189,12 +189,12 @@ def check_cmd():
     from jsonspec.operations import check, Error
     from jsonspec.pointer import ParseError
 
-    parser = add_parser()
+    parser = check_parser()
     args = parser.parse_args()
 
     try:
         pointer = args.pointer
-        if pointer.startswith('#/'):
+        if pointer.startswith('#'):
             pointer = pointer[1:]
         document = parse_document(args, parser)
         fragment = parse_fragment(args, parser)
@@ -222,7 +222,7 @@ def extract_cmd():
 
     try:
         pointer = args.pointer
-        if pointer.startswith('#/'):
+        if pointer.startswith('#'):
             pointer = pointer[1:]
         document = parse_document(args, parser)
         fragment = extract(document, pointer)
@@ -302,10 +302,10 @@ def parse_fragment(args, parser):
 
 
 def parse_target(args, parser):
-    if args.target:
-        target = args.target
-        if target.startswith('#/'):
-            return target[1:]
+    if args.target_pointer:
+        target = args.target_pointer
+        if target.startswith('#'):
+            target = target[1:]
         return target
 
     parser.error('target is required')
