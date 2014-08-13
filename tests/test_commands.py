@@ -4,7 +4,6 @@
 
 """
 
-import os
 import os.path
 import pytest
 from subprocess import Popen, PIPE
@@ -13,9 +12,10 @@ import json
 from . import TestCase, move_cwd
 
 
-def runner(func, args, success, result):
+def runner(cmd, args, success, result):
     try:
-        response = func(args)
+        args = cmd.parse_args(args)
+        response = cmd(args)
         if not success:
             raise Exception('error expected', response)
     except Exception as error:
@@ -29,31 +29,31 @@ scenarii = [
     # Pointer scenarii
 
     # inline json
-    ("""json-extract '#/foo/1' --document-json='{"foo": ["bar", "baz"]}'""", True),
-    ("""echo '{"foo": ["bar", "baz"]}' | json-extract '#/foo/1'""", True),
-    ("""json-extract '#/foo/2' --document-json='{"foo": ["bar", "baz"]}'""", False),
-    ("""echo '{"foo": ["bar", "baz"]}' | json-extract '#/foo/2'""", False),
+    ("""json extract '#/foo/1' --document-json='{"foo": ["bar", "baz"]}'""", True),
+    ("""echo '{"foo": ["bar", "baz"]}' | json extract '#/foo/1'""", True),
+    ("""json extract '#/foo/2' --document-json='{"foo": ["bar", "baz"]}'""", False),
+    ("""echo '{"foo": ["bar", "baz"]}' | json extract '#/foo/2'""", False),
 
     # existant file
-    ("""cat fixtures/first.data1.json | json-extract '#/name'""", True),
-    ("""json-extract '#/name' < fixtures/first.data1.json""", True),
-    ("""json-extract '#/name' --document-file=fixtures/first.data1.json""", True),
+    ("""cat fixtures/first.data1.json | json extract '#/name'""", True),
+    ("""json extract '#/name' < fixtures/first.data1.json""", True),
+    ("""json extract '#/name' --document-file=fixtures/first.data1.json""", True),
 
     # existant file, but pointer does not match
-    ("""cat fixtures/first.data1.json | json-extract '#/foo/bar'""", False),
-    ("""json-extract '#/foo/bar' < fixtures/first.data1.json""", False),
-    ("""json-extract '#/foo/bar' --document-file=fixtures/first.data1.json""", False),
+    ("""cat fixtures/first.data1.json | json extract '#/foo/bar'""", False),
+    ("""json extract '#/foo/bar' < fixtures/first.data1.json""", False),
+    ("""json extract '#/foo/bar' --document-file=fixtures/first.data1.json""", False),
 
     # inexistant file
-    ("""json-extract '#/foo/1' --document-file=doc.json""", False),
-    ("""json-extract '#/foo/1' < doc.json""", False),
-    ("""cat doc.json | json-extract '#/foo/1'""", False),
+    ("""json extract '#/foo/1' --document-file=doc.json""", False),
+    ("""json extract '#/foo/1' < doc.json""", False),
+    ("""cat doc.json | json extract '#/foo/1'""", False),
 
     # Schema scenarii
 
     #
-    ("""json-validate --schema-file=fixtures/three.schema.json < fixtures/three.data1.json""", False),
-    ("""json-validate --schema-file=fixtures/three.schema.json < fixtures/three.data2.json""", True),
+    ("""json validate --schema-file=fixtures/three.schema.json < fixtures/three.data1.json""", False),
+    ("""json validate --schema-file=fixtures/three.schema.json < fixtures/three.data2.json""", True),
 ]
 
 
@@ -79,7 +79,8 @@ add_scenes = [
 @pytest.mark.parametrize('pointer, document, fragment, success, result', add_scenes)
 def test_cli_add(pointer, document, fragment, success, result):
     doc, frag = json.dumps(document), json.dumps(fragment)
-    runner(cli.add_cmd.run, [pointer, '--document-json', doc, '--fragment-json', frag], success, result)
+    cmd = cli.AddCommand()
+    runner(cmd, [pointer, '--document-json', doc, '--fragment-json', frag], success, result)
 
 
 remove_scenes = [
@@ -91,7 +92,8 @@ remove_scenes = [
 @pytest.mark.parametrize('pointer, document, success, result', remove_scenes)
 def test_cli_remove(pointer, document, success, result):
     doc = json.dumps(document)
-    runner(cli.remove_cmd.run, [pointer, '--document-json', doc], success, result)
+    cmd = cli.RemoveCommand()
+    runner(cmd, [pointer, '--document-json', doc], success, result)
 
 
 replace_scenes = [
@@ -103,7 +105,8 @@ replace_scenes = [
 @pytest.mark.parametrize('pointer, document, fragment, success, result', replace_scenes)
 def test_cli_replace(pointer, document, fragment, success, result):
     doc, frag = json.dumps(document), json.dumps(fragment)
-    runner(cli.replace_cmd.run, [pointer, '--document-json', doc, '--fragment-json', frag], success, result)
+    cmd = cli.ReplaceCommand()
+    runner(cmd, [pointer, '--document-json', doc, '--fragment-json', frag], success, result)
 
 
 move_scenes = [
@@ -115,7 +118,8 @@ move_scenes = [
 @pytest.mark.parametrize('pointer, document, target, success, result', move_scenes)
 def test_cli_move(pointer, document, target, success, result):
     doc = json.dumps(document)
-    runner(cli.move_cmd.run, [pointer, '--document-json', doc, '--target-pointer', target], success, result)
+    cmd = cli.MoveCommand()
+    runner(cmd, [pointer, '--document-json', doc, '--target-pointer', target], success, result)
 
 
 copy_scenes = [
@@ -127,4 +131,5 @@ copy_scenes = [
 @pytest.mark.parametrize('pointer, document, target, success, result', copy_scenes)
 def test_cli_copy(pointer, document, target, success, result):
     doc = json.dumps(document)
-    runner(cli.copy_cmd.run, [pointer, '--document-json', doc, '--target-pointer', target], success, result)
+    cmd = cli.CopyCommand()
+    runner(cmd, [pointer, '--document-json', doc, '--target-pointer', target], success, result)
