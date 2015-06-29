@@ -231,7 +231,8 @@ class ChildToken(PointerToken):
                     raise RefError(obj, 'presence of a $ref member')
             return obj
         except ExtractError as error:
-            logger.exception(error)
+            # Not really an exception as it's being used for flow-control
+            # logger.exception(error)
             raise
         except Exception as error:
             logger.exception(error)
